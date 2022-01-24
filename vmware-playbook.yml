@@ -1,0 +1,60 @@
+- 
+ name: "Facts for vmware"
+ hosts: provide_hosts_here
+ vars:
+  datastore_substring_url: 'ds:///vmfs/volumes/'
+  delegate_to_localhost: localhost
+ tasks: 
+  - 
+   name: "Gather all vmwares in a vcentre"
+   vmware_vm_facts:
+     hostname: '{{ vcenter_hostname }}'
+     username: '{{ vcenter_username }}'
+     password: '{{ vcenter_password }}'
+   delegate_to: "{{ delegate_to_localhost }}"
+   register: vm_facts   
+  - 
+   debug:
+    virtual_machines: vm_facts.virtual_machines    
+  -
+   name: "Gather all UUID related to vmware host"
+   vmware_vm_facts:
+      hostname: '{{ vcenter_hostname }}'
+      username: '{{ vcenter_username }}'
+      password: '{{ vcenter_password }}'
+   delegate_to: "{{ delegate_to_localhost }}"
+   register: vm_facts
+  - 
+   debug:
+    virtual_machine_uuid: "{{ item.uuid }}"
+   loop:
+      - "{{ vm_facts.virtual_machines | json_query(query) }}"   
+  - 
+   name: "Gather all datastore information for a given datacenter name"  
+   vmware_datastore_facts:
+      hostname: '{{ vcenter_hostname }}'
+      username: '{{ vcenter_username }}'
+      password: '{{ vcenter_password }}'
+   delegate_to: "{{ delegate_to_localhost }}"
+   register: datastore_facts
+  - 
+   debug:
+    datastores: datastore_facts.datastores
+  - 
+   debug:
+   ## datacenter url as per ansible 2.7 corresponds to value starting with ds:///vmfs/volumes/
+    datastores_uuid: "{{ item.urls }}.split('ds:///vmfs/volumes/')[0]"
+   loop:
+    - "{{ datastore_facts.datastores | json_query(query) }}"   
+  - 
+   name: "Gather cluster facts from given datacenter"
+   vmware_cluster_facts:
+      hostname: '{{ vcenter_hostname }}'
+      username: '{{ vcenter_username }}'
+      password: '{{ vcenter_password }}'
+      datacenter: '{{ datacenter_name }}'
+   delegate_to: "{{ delegate_to_localhost }}"
+   register: cluster_facts
+  - 
+   debug:
+    clusters: cluster_facts.clusters
